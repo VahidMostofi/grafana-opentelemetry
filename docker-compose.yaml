@@ -1,5 +1,27 @@
 services:
 
+  service-dicer:
+    container_name: service-dicer
+    build:
+      context: ./sample-service
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    environment:
+      OTEL_RESOURCE_ATTRIBUTES: "service.name=service-dicer"
+      SERVICE_NAME: "service-dicer"
+      PORT: "8080"
+  
+  service-card:
+    container_name: service-card
+    build:
+      context: ./sample-service
+      dockerfile: Dockerfile
+    environment:
+      OTEL_RESOURCE_ATTRIBUTES: "service.name=service-card"
+      SERVICE_NAME: "service-card"
+      PORT: "8080"
+
   grafana:
     container_name: grafana
     image: grafana/grafana:latest
@@ -68,6 +90,10 @@ services:
       - ./opentelemetry-collector/otel-config.yaml:/etc/otel-config.yaml
     command:
       - "--config=/etc/otel-config.yaml"
+    ports:
+      - 4317:4317
+      - 54526:54526
+      - 8888:8888
     depends_on:
       - prometheus
       - tempo
