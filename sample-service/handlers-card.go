@@ -10,18 +10,7 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/metric"
 )
-
-func init() {
-	var err error
-	rollCnt, err = meter.Int64Counter("dice_rolls",
-		metric.WithDescription("The number of rolls by roll value"),
-		metric.WithUnit("{roll}"))
-	if err != nil {
-		panic(err)
-	}
-}
 
 func pickACard(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracer.Start(r.Context(), "pickACard")

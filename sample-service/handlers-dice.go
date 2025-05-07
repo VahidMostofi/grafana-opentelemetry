@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/protobuf/internal/errors"
 )
 
 func rolldice(w http.ResponseWriter, r *http.Request) {
@@ -27,23 +28,7 @@ func rolldice(w http.ResponseWriter, r *http.Request) {
 
 	ll = ll.With("roll-value", roll)
 
-	ctx, sleepSpan := tracer.Start(ctx, "operation sleep")
-
-	ctx, span = tracer.Start(ctx, "sleep by roll value")
-	if roll > 3 {
-		span.AddEvent("roll is greater than - this is a a long sleep!")
-	} else {
-		span.AddEvent("roll is less than 3 - I'll be up quickly")
-	}
-	span.SetAttributes(attribute.Int("roll-value", roll))
-	time.Sleep(time.Millisecond * 10 * time.Duration(roll))
-	span.End()
-
-	ctx, span = tracer.Start(ctx, "I can do a generic sleep")
-	time.Sleep(time.Millisecond * 100)
-	span.End()
-
-	sleepSpan.End()
+	sleep(ctx, ll, roll)
 
 	downstreamResp, err := callCardService(ctx, ll, roll)
 	if err != nil {
@@ -78,14 +63,33 @@ func rolldice(w http.ResponseWriter, r *http.Request) {
 	// ------------------------------------------------
 }
 
+func sleep(ctx context.Context, ll *slog.Logger, roll int) {
+	ctx, sleepSpan := tracer.Start(ctx, "operation sleep")
+	defer sleepSpan.End()
+
+	ctx, span := tracer.Start(ctx, "sleep by roll value")
+	if roll > 3 {
+		span.AddEvent("roll is greater than - this is a a long sleep!")
+	} else {
+		span.AddEvent("roll is less than 3 - I'll be up quickly")
+	}
+	span.SetAttributes(attribute.Int("roll-value", roll))
+	time.Sleep(time.Millisecond * 10 * time.Duration(roll))
+	span.End()
+
+	_, span = tracer.Start(ctx, "I can do a generic sleep")
+	time.Sleep(time.Millisecond * 100)
+	span.End()
+}
+
 func callCardService(ctx context.Context, ll *slog.Logger, roll int) (string, error) {
 	var downstreamResp string
 	if roll > 3 {
 		ll.WarnContext(ctx, "roll is greater than 3 - calling card service")
 		resp, err := otelhttp.Get(ctx, "http://service-card:8080/pickacard")
 		if err != nil {
-			ll.ErrorContext(ctx, "error calling card service", "error", err)
-			return "", err
+			// ll.ErrorContext(ctx, "error calling card service", "error", err)
+			return "", errors.Wrap(err, "error calling card service")
 		}
 		defer resp.Body.Close()
 
